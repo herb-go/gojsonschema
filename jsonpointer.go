@@ -1,8 +1,11 @@
 package gojsonschema
 
 import (
+	"errors"
 	"strings"
 )
+
+var ErrInvalidContex = errors.New("invalid context")
 
 func encodeReferenceToken(token string) string {
 	step1 := strings.Replace(token, `~`, `~0`, -1)
@@ -25,7 +28,7 @@ func ConvertContextToJSONPointer(context *JsonContext) []string {
 	var result = []string{}
 	buildJSONPointer(context, 0, &result)
 	if len(result) == 0 || result[0] != STRING_ROOT_SCHEMA_PROPERTY {
-
+		panic(ErrInvalidContex)
 	}
 	return result[1:]
 }
