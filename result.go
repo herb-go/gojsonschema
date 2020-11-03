@@ -66,6 +66,12 @@ type (
 		Details() ErrorDetails
 		// String returns a string representation of the error
 		String() string
+		setSubSchema(schema *subSchema)
+		IsEmptySchema() bool
+		SchemaTitle() string
+		SchemaDescription() string
+		Pointer() []string
+		EncodedPointer() string
 	}
 
 	// ResultErrorFields holds the fields for each ResultError implementation.
@@ -78,6 +84,7 @@ type (
 		descriptionFormat string       // A format for human readable error message
 		value             interface{}  // Value given by the JSON file that is the source of the error
 		details           ErrorDetails
+		schema            *subSchema
 	}
 
 	// Result holds the result of a validation
@@ -203,8 +210,8 @@ func (v *Result) AddError(err ResultError, details ErrorDetails) {
 	v.errors = append(v.errors, err)
 }
 
-func (v *Result) addInternalError(err ResultError, context *JsonContext, value interface{}, details ErrorDetails) {
-	newError(err, context, value, Locale, details)
+func (v *Result) addInternalError(err ResultError, context *JsonContext, schame *subSchema, value interface{}, details ErrorDetails) {
+	newError(err, context, schame, value, Locale, details)
 	v.errors = append(v.errors, err)
 	v.score -= 2 // results in a net -1 when added to the +1 we get at the end of the validation function
 }

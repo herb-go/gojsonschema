@@ -81,6 +81,7 @@ func (v *subSchema) validateRecursive(currentSubSchema *subSchema, currentNode i
 			result.addInternalError(
 				new(FalseError),
 				context,
+				currentSubSchema,
 				currentNode,
 				ErrorDetails{},
 			)
@@ -100,6 +101,7 @@ func (v *subSchema) validateRecursive(currentSubSchema *subSchema, currentNode i
 			result.addInternalError(
 				new(InvalidTypeError),
 				context,
+				currentSubSchema,
 				currentNode,
 				ErrorDetails{
 					"expected": currentSubSchema.types.String(),
@@ -132,6 +134,7 @@ func (v *subSchema) validateRecursive(currentSubSchema *subSchema, currentNode i
 				result.addInternalError(
 					new(InvalidTypeError),
 					context,
+					currentSubSchema,
 					currentNode,
 					ErrorDetails{
 						"expected": currentSubSchema.types.String(),
@@ -161,6 +164,7 @@ func (v *subSchema) validateRecursive(currentSubSchema *subSchema, currentNode i
 					result.addInternalError(
 						new(InvalidTypeError),
 						context,
+						currentSubSchema,
 						currentNode,
 						ErrorDetails{
 							"expected": currentSubSchema.types.String(),
@@ -184,6 +188,7 @@ func (v *subSchema) validateRecursive(currentSubSchema *subSchema, currentNode i
 					result.addInternalError(
 						new(InvalidTypeError),
 						context,
+						currentSubSchema,
 						currentNode,
 						ErrorDetails{
 							"expected": currentSubSchema.types.String(),
@@ -219,6 +224,7 @@ func (v *subSchema) validateRecursive(currentSubSchema *subSchema, currentNode i
 					result.addInternalError(
 						new(InvalidTypeError),
 						context,
+						currentSubSchema,
 						currentNode,
 						ErrorDetails{
 							"expected": currentSubSchema.types.String(),
@@ -241,6 +247,7 @@ func (v *subSchema) validateRecursive(currentSubSchema *subSchema, currentNode i
 					result.addInternalError(
 						new(InvalidTypeError),
 						context,
+						currentSubSchema,
 						currentNode,
 						ErrorDetails{
 							"expected": currentSubSchema.types.String(),
@@ -291,7 +298,7 @@ func (v *subSchema) validateSchema(currentSubSchema *subSchema, currentNode inte
 		}
 		if !validatedAnyOf {
 
-			result.addInternalError(new(NumberAnyOfError), context, currentNode, ErrorDetails{})
+			result.addInternalError(new(NumberAnyOfError), context, currentSubSchema, currentNode, ErrorDetails{})
 
 			if bestValidationResult != nil {
 				// add error messages of closest matching subSchema as
@@ -317,7 +324,7 @@ func (v *subSchema) validateSchema(currentSubSchema *subSchema, currentNode inte
 
 		if nbValidated != 1 {
 
-			result.addInternalError(new(NumberOneOfError), context, currentNode, ErrorDetails{})
+			result.addInternalError(new(NumberOneOfError), context, currentSubSchema, currentNode, ErrorDetails{})
 
 			if nbValidated == 0 {
 				// add error messages of closest matching subSchema as
@@ -340,14 +347,14 @@ func (v *subSchema) validateSchema(currentSubSchema *subSchema, currentNode inte
 		}
 
 		if nbValidated != len(currentSubSchema.allOf) {
-			result.addInternalError(new(NumberAllOfError), context, currentNode, ErrorDetails{})
+			result.addInternalError(new(NumberAllOfError), context, currentSubSchema, currentNode, ErrorDetails{})
 		}
 	}
 
 	if currentSubSchema.not != nil {
 		validationResult := currentSubSchema.not.subValidateWithContext(currentNode, context)
 		if validationResult.Valid() {
-			result.addInternalError(new(NumberNotError), context, currentNode, ErrorDetails{})
+			result.addInternalError(new(NumberNotError), context, currentSubSchema, currentNode, ErrorDetails{})
 		}
 	}
 
@@ -363,6 +370,7 @@ func (v *subSchema) validateSchema(currentSubSchema *subSchema, currentNode inte
 								result.addInternalError(
 									new(MissingDependencyError),
 									context,
+									currentSubSchema,
 									currentNode,
 									ErrorDetails{"dependency": dependOnKey},
 								)
@@ -382,14 +390,14 @@ func (v *subSchema) validateSchema(currentSubSchema *subSchema, currentNode inte
 		if currentSubSchema._then != nil && validationResultIf.Valid() {
 			validationResultThen := currentSubSchema._then.subValidateWithContext(currentNode, context)
 			if !validationResultThen.Valid() {
-				result.addInternalError(new(ConditionThenError), context, currentNode, ErrorDetails{})
+				result.addInternalError(new(ConditionThenError), context, currentSubSchema, currentNode, ErrorDetails{})
 				result.mergeErrors(validationResultThen)
 			}
 		}
 		if currentSubSchema._else != nil && !validationResultIf.Valid() {
 			validationResultElse := currentSubSchema._else.subValidateWithContext(currentNode, context)
 			if !validationResultElse.Valid() {
-				result.addInternalError(new(ConditionElseError), context, currentNode, ErrorDetails{})
+				result.addInternalError(new(ConditionElseError), context, currentSubSchema, currentNode, ErrorDetails{})
 				result.mergeErrors(validationResultElse)
 			}
 		}
@@ -409,11 +417,12 @@ func (v *subSchema) validateCommon(currentSubSchema *subSchema, value interface{
 	if currentSubSchema._const != nil {
 		vString, err := marshalWithoutNumber(value)
 		if err != nil {
-			result.addInternalError(new(InternalError), context, value, ErrorDetails{"error": err})
+			result.addInternalError(new(InternalError), context, currentSubSchema, value, ErrorDetails{"error": err})
 		}
 		if *vString != *currentSubSchema._const {
 			result.addInternalError(new(ConstError),
 				context,
+				currentSubSchema,
 				value,
 				ErrorDetails{
 					"allowed": *currentSubSchema._const,
@@ -426,12 +435,13 @@ func (v *subSchema) validateCommon(currentSubSchema *subSchema, value interface{
 	if len(currentSubSchema.enum) > 0 {
 		vString, err := marshalWithoutNumber(value)
 		if err != nil {
-			result.addInternalError(new(InternalError), context, value, ErrorDetails{"error": err})
+			result.addInternalError(new(InternalError), context, currentSubSchema, value, ErrorDetails{"error": err})
 		}
 		if !isStringInSlice(currentSubSchema.enum, *vString) {
 			result.addInternalError(
 				new(EnumError),
 				context,
+				currentSubSchema,
 				value,
 				ErrorDetails{
 					"allowed": strings.Join(currentSubSchema.enum, ", "),
@@ -446,6 +456,7 @@ func (v *subSchema) validateCommon(currentSubSchema *subSchema, value interface{
 			result.addInternalError(
 				new(DoesNotMatchFormatError),
 				context,
+				currentSubSchema,
 				value,
 				ErrorDetails{"format": currentSubSchema.format},
 			)
@@ -490,7 +501,7 @@ func (v *subSchema) validateArray(currentSubSchema *subSchema, value []interface
 				switch currentSubSchema.additionalItems.(type) {
 				case bool:
 					if !currentSubSchema.additionalItems.(bool) {
-						result.addInternalError(new(ArrayNoAdditionalItemsError), context, value, ErrorDetails{})
+						result.addInternalError(new(ArrayNoAdditionalItemsError), context, currentSubSchema, value, ErrorDetails{})
 					}
 				case *subSchema:
 					additionalItemSchema := currentSubSchema.additionalItems.(*subSchema)
@@ -510,6 +521,7 @@ func (v *subSchema) validateArray(currentSubSchema *subSchema, value []interface
 			result.addInternalError(
 				new(ArrayMinItemsError),
 				context,
+				currentSubSchema,
 				value,
 				ErrorDetails{"min": *currentSubSchema.minItems},
 			)
@@ -520,6 +532,7 @@ func (v *subSchema) validateArray(currentSubSchema *subSchema, value []interface
 			result.addInternalError(
 				new(ArrayMaxItemsError),
 				context,
+				currentSubSchema,
 				value,
 				ErrorDetails{"max": *currentSubSchema.maxItems},
 			)
@@ -532,12 +545,13 @@ func (v *subSchema) validateArray(currentSubSchema *subSchema, value []interface
 		for j, v := range value {
 			vString, err := marshalWithoutNumber(v)
 			if err != nil {
-				result.addInternalError(new(InternalError), context, value, ErrorDetails{"err": err})
+				result.addInternalError(new(InternalError), context, currentSubSchema, value, ErrorDetails{"err": err})
 			}
 			if i, ok := stringifiedItems[*vString]; ok {
 				result.addInternalError(
 					new(ItemsMustBeUniqueError),
 					context,
+					currentSubSchema,
 					value,
 					ErrorDetails{"type": TYPE_ARRAY, "i": i, "j": j},
 				)
@@ -569,6 +583,7 @@ func (v *subSchema) validateArray(currentSubSchema *subSchema, value []interface
 			result.addInternalError(
 				new(ArrayContainsError),
 				context,
+				currentSubSchema,
 				value,
 				ErrorDetails{},
 			)
@@ -594,6 +609,7 @@ func (v *subSchema) validateObject(currentSubSchema *subSchema, value map[string
 			result.addInternalError(
 				new(ArrayMinPropertiesError),
 				context,
+				currentSubSchema,
 				value,
 				ErrorDetails{"min": *currentSubSchema.minProperties},
 			)
@@ -604,6 +620,7 @@ func (v *subSchema) validateObject(currentSubSchema *subSchema, value map[string
 			result.addInternalError(
 				new(ArrayMaxPropertiesError),
 				context,
+				currentSubSchema,
 				value,
 				ErrorDetails{"max": *currentSubSchema.maxProperties},
 			)
@@ -619,6 +636,7 @@ func (v *subSchema) validateObject(currentSubSchema *subSchema, value map[string
 			result.addInternalError(
 				new(RequiredError),
 				context,
+				currentSubSchema,
 				value,
 				ErrorDetails{"property": requiredProperty},
 			)
@@ -648,6 +666,7 @@ func (v *subSchema) validateObject(currentSubSchema *subSchema, value map[string
 					result.addInternalError(
 						new(AdditionalPropertyNotAllowedError),
 						context,
+						currentSubSchema,
 						value[pk],
 						ErrorDetails{"property": pk},
 					)
@@ -667,6 +686,7 @@ func (v *subSchema) validateObject(currentSubSchema *subSchema, value map[string
 			if !validationResult.Valid() {
 				result.addInternalError(new(InvalidPropertyNameError),
 					context,
+					currentSubSchema,
 					value, ErrorDetails{
 						"property": pk,
 					})
@@ -729,6 +749,7 @@ func (v *subSchema) validateString(currentSubSchema *subSchema, value interface{
 			result.addInternalError(
 				new(StringLengthGTEError),
 				context,
+				currentSubSchema,
 				value,
 				ErrorDetails{"min": *currentSubSchema.minLength},
 			)
@@ -739,6 +760,7 @@ func (v *subSchema) validateString(currentSubSchema *subSchema, value interface{
 			result.addInternalError(
 				new(StringLengthLTEError),
 				context,
+				currentSubSchema,
 				value,
 				ErrorDetails{"max": *currentSubSchema.maxLength},
 			)
@@ -751,6 +773,7 @@ func (v *subSchema) validateString(currentSubSchema *subSchema, value interface{
 			result.addInternalError(
 				new(DoesNotMatchPatternError),
 				context,
+				currentSubSchema,
 				value,
 				ErrorDetails{"pattern": currentSubSchema.pattern},
 			)
@@ -782,6 +805,7 @@ func (v *subSchema) validateNumber(currentSubSchema *subSchema, value interface{
 			result.addInternalError(
 				new(MultipleOfError),
 				context,
+				currentSubSchema,
 				number,
 				ErrorDetails{
 					"multiple": new(big.Float).SetRat(currentSubSchema.multipleOf),
@@ -796,6 +820,7 @@ func (v *subSchema) validateNumber(currentSubSchema *subSchema, value interface{
 			result.addInternalError(
 				new(NumberLTEError),
 				context,
+				currentSubSchema,
 				number,
 				ErrorDetails{
 					"max": new(big.Float).SetRat(currentSubSchema.maximum),
@@ -808,6 +833,7 @@ func (v *subSchema) validateNumber(currentSubSchema *subSchema, value interface{
 			result.addInternalError(
 				new(NumberLTError),
 				context,
+				currentSubSchema,
 				number,
 				ErrorDetails{
 					"max": new(big.Float).SetRat(currentSubSchema.exclusiveMaximum),
@@ -822,6 +848,7 @@ func (v *subSchema) validateNumber(currentSubSchema *subSchema, value interface{
 			result.addInternalError(
 				new(NumberGTEError),
 				context,
+				currentSubSchema,
 				number,
 				ErrorDetails{
 					"min": new(big.Float).SetRat(currentSubSchema.minimum),
@@ -834,6 +861,7 @@ func (v *subSchema) validateNumber(currentSubSchema *subSchema, value interface{
 			result.addInternalError(
 				new(NumberGTError),
 				context,
+				currentSubSchema,
 				number,
 				ErrorDetails{
 					"min": new(big.Float).SetRat(currentSubSchema.exclusiveMinimum),

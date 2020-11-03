@@ -210,7 +210,7 @@ type (
 )
 
 // newError takes a ResultError type and sets the type, context, description, details, value, and field
-func newError(err ResultError, context *JsonContext, value interface{}, locale locale, details ErrorDetails) {
+func newError(err ResultError, context *JsonContext, schema *subSchema, value interface{}, locale locale, details ErrorDetails) {
 	var t string
 	var d string
 	switch err.(type) {
@@ -317,6 +317,7 @@ func newError(err ResultError, context *JsonContext, value interface{}, locale l
 	err.SetValue(value)
 	err.SetDetails(details)
 	err.SetDescriptionFormat(d)
+	err.setSubSchema(schema)
 	details["field"] = err.Field()
 
 	if _, exists := details["context"]; !exists && context != nil {
