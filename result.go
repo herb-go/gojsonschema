@@ -72,6 +72,7 @@ type (
 		SchemaDescription() string
 		Pointer() []string
 		EncodedPointer() string
+		SchemaEncodedPointer() string
 	}
 
 	// ResultErrorFields holds the fields for each ResultError implementation.

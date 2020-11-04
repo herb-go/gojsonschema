@@ -68,6 +68,24 @@ func (v *ResultErrorFields) Pointer() []string {
 func (v *ResultErrorFields) EncodedPointer() string {
 	return EncodeJSONPointer(v.Pointer())
 }
+func walkSchema(sch *subSchema, depth int, data *[]string) {
+	if sch.parent == nil {
+		*data = make([]string, depth)
+		return
+	}
+	depth++
+	walkSchema(sch.parent, depth, data)
+	(*data)[len(*data)-depth] = sch.property
+
+}
+func (v *ResultErrorFields) SchemaEncodedPointer() string {
+	if v.schema == nil {
+		return ""
+	}
+	var data []string
+	walkSchema(v.schema, 0, &data)
+	return EncodeJSONPointer(data)
+}
 
 // type Found struct {
 // 	schema  *subSchema
